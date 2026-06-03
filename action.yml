@@ -1,0 +1,77 @@
+name: 'Nexus Readme Sync'
+description: 'High-performance hybrid documentation engine that keeps your README and architecture diagrams in perfect sync.'
+author: 'Vijval Parakkat'
+branding:
+  icon: 'file-text'
+  color: 'green'
+
+inputs:
+  gemini_api_key:
+    description: 'Google Gemini API Key utilized for model inference loops'
+    required: true
+  workspace_path:
+    description: 'The directory scope targeting file crawling and AST matching'
+    required: false
+    default: '.'
+  output_file:
+    description: 'The target markdown output file to atomically swap'
+    required: false
+    default: 'README.md'
+  exclude:
+    description: 'Comma-separated custom directory exclusions to skip during traversal'
+    required: false
+    default: 'target,node_modules,dist'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Establish Node.js Toolchain
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Establish Rust Toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install Orchestrator Dependencies
+      shell: bash
+      run: npm install --prefix ${{ github.action_path }}/orchestrator
+
+    - name: Compile Orchestrator TypeScript Assets
+      shell: bash
+      run: npm run build --prefix ${{ github.action_path }}/orchestrator
+
+    - name: Compile High-Performance Rust Static Parser Core
+      shell: bash
+      run: cargo build --release --manifest-path ${{ github.action_path }}/core-parser/Cargo.toml
+
+    - name: Execute Nexus-README Engine Lifecycle Loop
+      shell: bash
+      env:
+        GEMINI_API_KEY: ${{ inputs.gemini_api_key }}
+        NODE_ENV: test # Ensure non-interactive execution for API stubs if key falls through
+      run: |
+        node ${{ github.action_path }}/orchestrator/dist/cli.js \
+          -w "${{ inputs.workspace_path }}" \
+          -o "${{ inputs.output_file }}" \
+          --exclude "${{ inputs.exclude }}"
+
+    - name: Check for Structural Markdown Diff Changes
+      id: git-check
+      shell: bash
+      run: |
+        if [ -n "$(git status --porcelain ${{ inputs.output_file }})" ]; then
+          echo "changed=true" >> $GITHUB_OUTPUT
+        else
+          echo "changed=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Automate Synchronized Documentation Commit & Push
+      if: steps.git-check.outputs.changed == 'true'
+      shell: bash
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.output_file }}
+        git commit -m "docs: automated architectural synchronization via Nexus-README [skip ci]"
+        git push

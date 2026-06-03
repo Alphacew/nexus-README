@@ -1,0 +1,3 @@
+(std::result::Result<ignore::DirEntry, ignore::Error>,)
+std::boxed::Box<crawler::WorkspaceCrawler::crawl::CrawlerVisitor>
+std::boxed::Box<dyn std::ops::FnMut(std::result::Result<ignore::DirEntry, ignore::Error>) -> ignore::WalkState + std::marker::Send>

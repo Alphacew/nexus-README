@@ -1,0 +1,55 @@
+name: Release Compilation Matrix
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  build-static-core:
+    name: Build Static Core Binary
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: core-parser-linux-x64
+            binary_src: core-parser/target/x86_64-unknown-linux-gnu/release/core-parser
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: core-parser-darwin-x64
+            binary_src: core-parser/target/x86_64-apple-darwin/release/core-parser
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: core-parser-darwin-arm64
+            binary_src: core-parser/target/aarch64-apple-darwin/release/core-parser
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: core-parser-win32-x64
+            binary_src: core-parser/target/x86_64-pc-windows-msvc/release/core-parser.exe
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Compilation Target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Cache Cargo Dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: core-parser -> target
+
+      - name: Build Core Release Binary
+        run: cargo build --release --target ${{ matrix.target }} --manifest-path core-parser/Cargo.toml
+
+      - name: Upload Pre-compiled Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.binary_src }}
+          if-no-files-found: error
