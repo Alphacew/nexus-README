@@ -73,8 +73,9 @@ test('Parser binary integration test', async () => {
     assert.ok(mainModule, 'Should find main.rs module');
     assert.strictEqual(mainModule.language, 'rust');
     assert.ok(mainModule.exports.length > 0, 'Exports should not be empty');
-  } catch (err: any) {
-    assert.fail(`Integration test failed: ${err.message}`);
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    assert.fail(`Integration test failed: ${errorMessage}`);
   }
 });
 
