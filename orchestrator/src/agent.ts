@@ -58,8 +58,9 @@ async function callGemini(
     }
 
     return text.trim();
-  } catch (err: any) {
-    throw new Error(`Failed to query Gemini model ${model}: ${err.message}`);
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to query Gemini model ${model}: ${errorMessage}`);
   }
 }
 

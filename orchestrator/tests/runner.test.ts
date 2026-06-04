@@ -73,8 +73,9 @@ test('Parser binary integration test', async () => {
     assert.ok(mainModule, 'Should find main.rs module');
     assert.strictEqual(mainModule.language, 'rust');
     assert.ok(mainModule.exports.length > 0, 'Exports should not be empty');
-  } catch (err: any) {
-    assert.fail(`Integration test failed: ${err.message}`);
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    assert.fail(`Integration test failed: ${errorMessage}`);
   }
 });
 
@@ -87,7 +88,7 @@ test('Parser binary handles non-existent workspace directory', async () => {
       binPath,
       workspaceDir: nonExistentDir,
     }),
-    (err: any) => {
+    (err: unknown) => {
       // It should either fail to spawn or return an exit code indicating error
       return err instanceof Error;
     },
@@ -103,8 +104,9 @@ test('Parser binary error handling for invalid binary path', async () => {
       binPath: badBinPath,
       workspaceDir,
     }),
-    (err: any) => {
-      return err.message.includes('Failed to start child process') || err instanceof BinaryRunnerError;
+    (err: unknown) => {
+      const isErrorWithMessage = err instanceof Error && err.message.includes('Failed to start child process');
+      return isErrorWithMessage || err instanceof BinaryRunnerError;
     },
     'Should reject on invalid binary path'
   );
