@@ -42,7 +42,7 @@ test('CLI: execution flow creates file and performs atomic swap', async () => {
     // Staging file should NOT exist anymore (atomic rename)
     await assert.rejects(
       fs.stat(tempOutput),
-      (err: any) => err.code === 'ENOENT',
+      (err: unknown) => err !== null && typeof err === 'object' && 'code' in err && err.code === 'ENOENT',
       'Temporary staging file should have been renamed and no longer exists'
     );
   } finally {

@@ -139,10 +139,11 @@ export function runParserBinary(options: RunnerOptions): Promise<CodebaseTopolog
       let parsedJson: unknown;
       try {
         parsedJson = JSON.parse(stdoutStr);
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
         reject(
           new BinaryRunnerError(
-            `Failed to parse binary stdout as JSON: ${err.message}`,
+            `Failed to parse binary stdout as JSON: ${errorMessage}`,
             code,
             stdoutStr,
             stderrStr
