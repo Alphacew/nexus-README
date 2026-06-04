@@ -1,39 +1,40 @@
-import { promises as fs } from 'fs';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import * as readline from 'readline/promises';
-import { stdin as input, stdout as output } from 'process';
-import { runParserBinary } from './runner.js';
-import { runAgentPipeline } from './agent.js';
-import { patchReadme } from './lock.js';
-import { generateMermaidGraph } from './graph.js';
-import dotenv from 'dotenv';
+import { promises as fs } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+import * as readline from "readline/promises";
+import { stdin as input, stdout as output } from "process";
+import { runParserBinary } from "./runner.js";
+import { runAgentPipeline } from "./agent.js";
+import { patchReadme } from "./lock.js";
+import { generateMermaidGraph } from "./graph.js";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 async function ensureApiKey() {
-  if (process.env['GEMINI_API_KEY']) {
+  if (process.env["GEMINI_API_KEY"]) {
     return;
   }
 
-  if (!process.stdin.isTTY || process.env['NODE_ENV'] === 'test') {
+  if (!process.stdin.isTTY || process.env["NODE_ENV"] === "test") {
     return;
   }
-  
-  const envPath = resolve(process.cwd(), '.env');
+
+  const envPath = resolve(process.cwd(), ".env");
   const rl = readline.createInterface({ input, output });
-  const key = await rl.question('GEMINI_API_KEY not found. Please enter your Gemini API key: ');
+  const key = await rl.question(
+    "GEMINI_API_KEY not found. Please enter your Gemini API key: ",
+  );
   rl.close();
-  
+
   if (key.trim()) {
     await fs.appendFile(envPath, `\nGEMINI_API_KEY=${key.trim()}\n`);
-    process.env['GEMINI_API_KEY'] = key.trim();
-    console.log('API key saved to .env file.');
+    process.env["GEMINI_API_KEY"] = key.trim();
+    console.log("API key saved to .env file.");
   } else {
-    console.warn('No API key provided. Running in STUB fallback mode.');
+    console.warn("No API key provided. Running in STUB fallback mode.");
   }
 }
-
 
 /**
  * Main CLI orchestrator logic.
@@ -41,22 +42,25 @@ async function ensureApiKey() {
 export async function main(args: string[]): Promise<void> {
   await ensureApiKey();
 
-  let workspaceDir = '.';
-  let outputFilePath = 'README.md';
+  let workspaceDir = ".";
+  let outputFilePath = "README.md";
   let excludeList: string[] = [];
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (!arg) continue;
 
-    if (arg === '--workspace' || arg === '-w') {
-      workspaceDir = args[++i] || '.';
-    } else if (arg === '--output' || arg === '-o') {
-      outputFilePath = args[++i] || 'README.md';
-    } else if (arg === '--exclude' || arg === '-e') {
-      const paths = args[++i] || '';
-      excludeList = paths.split(',').map((p) => p.trim()).filter(Boolean);
-    } else if (!arg.startsWith('-') && i === 0) {
+    if (arg === "--workspace" || arg === "-w") {
+      workspaceDir = args[++i] || ".";
+    } else if (arg === "--output" || arg === "-o") {
+      outputFilePath = args[++i] || "README.md";
+    } else if (arg === "--exclude" || arg === "-e") {
+      const paths = args[++i] || "";
+      excludeList = paths
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean);
+    } else if (!arg.startsWith("-") && i === 0) {
       workspaceDir = arg;
     }
   }
@@ -78,11 +82,11 @@ export async function main(args: string[]): Promise<void> {
   const graphMarkdown = `\`\`\`mermaid\n${graphRaw}\n\`\`\``;
 
   // 4. Read current markdown target if it exists
-  let existingContent = '';
+  let existingContent = "";
   try {
-    existingContent = await fs.readFile(absOutputFilePath, 'utf8');
+    existingContent = await fs.readFile(absOutputFilePath, "utf8");
   } catch (err: any) {
-    if (err.code !== 'ENOENT') {
+    if (err.code !== "ENOENT") {
       throw err;
     }
   }
@@ -97,10 +101,10 @@ export async function main(args: string[]): Promise<void> {
 
   // 5. Perform atomic overwrite using staging file
   const targetDir = dirname(absOutputFilePath);
-  const baseName = absOutputFilePath.split('/').pop() || 'README.md';
+  const baseName = absOutputFilePath.split("/").pop() || "README.md";
   const tempFilePath = resolve(targetDir, `.${baseName}.tmp`);
 
-  await fs.writeFile(tempFilePath, patchedContent, 'utf8');
+  await fs.writeFile(tempFilePath, patchedContent, "utf8");
   await fs.rename(tempFilePath, absOutputFilePath);
 
   console.log(`Successfully updated documentation at: ${absOutputFilePath}`);
@@ -112,19 +116,19 @@ if (nodePath) {
   const filename = fileURLToPath(import.meta.url);
   // Check if current file was invoked directly (compiled or via tsx)
   if (
-    resolve(nodePath) === resolve(filename) || 
-    nodePath.endsWith('tsx') || 
-    nodePath.includes('bin/cli')
+    resolve(nodePath) === resolve(filename) ||
+    nodePath.endsWith("tsx") ||
+    nodePath.includes("bin/cli")
   ) {
     // Only execute if this appears to be the direct target entrypoint
-    const isDirectRun = process.argv[2] && (
-      process.argv[2].includes('cli.ts') || 
-      process.argv[2].includes('cli.js')
-    );
+    const isDirectRun =
+      process.argv[2] &&
+      (process.argv[2].includes("cli.ts") ||
+        process.argv[2].includes("cli.js"));
     // tsx passes the script path as the second argv element, check if it's us
     if (isDirectRun || resolve(nodePath) === resolve(filename)) {
       main(process.argv.slice(isDirectRun ? 3 : 2)).catch((err) => {
-        console.error('Fatal CLI Error:', err);
+        console.error("Fatal CLI Error:", err);
         process.exit(1);
       });
     }
