@@ -81,8 +81,10 @@ export async function main(args: string[]): Promise<void> {
   let existingContent = '';
   try {
     existingContent = await fs.readFile(absOutputFilePath, 'utf8');
-  } catch (err: any) {
-    if (err.code !== 'ENOENT') {
+  } catch (err: unknown) {
+    if (typeof err === 'object' && err !== null && 'code' in err && (err as any).code === 'ENOENT') {
+      // Ignore ENOENT, file does not exist yet
+    } else {
       throw err;
     }
   }
