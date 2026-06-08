@@ -1,8 +1,8 @@
-import { spawn } from 'child_process';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
-import { existsSync } from 'fs';
-import { CodebaseTopologySchema, type CodebaseTopology } from './schema.js';
+import { spawn } from "child_process";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
+import { existsSync } from "fs";
+import { CodebaseTopologySchema, type CodebaseTopology } from "./schema.js";
 
 export interface RunnerOptions {
   binPath?: string;
@@ -15,10 +15,10 @@ export class BinaryRunnerError extends Error {
     message: string,
     public readonly exitCode: number | null,
     public readonly stdout: string,
-    public readonly stderr: string
+    public readonly stderr: string,
   ) {
     super(message);
-    this.name = 'BinaryRunnerError';
+    this.name = "BinaryRunnerError";
   }
 }
 
@@ -32,27 +32,33 @@ export class BinaryRunnerError extends Error {
 export function resolveBinaryPath(
   customPath?: string,
   platform: string = process.platform,
-  arch: string = process.arch
+  arch: string = process.arch,
 ): string {
   if (customPath) {
     return resolve(customPath);
   }
 
-  if (process.env['NEXUS_PARSER_PATH']) {
-    return resolve(process.env['NEXUS_PARSER_PATH']);
+  if (process.env["NEXUS_PARSER_PATH"]) {
+    return resolve(process.env["NEXUS_PARSER_PATH"]);
   }
 
   const filename = fileURLToPath(import.meta.url);
   let currentDir = dirname(filename);
-  const isWindows = platform === 'win32';
-  const binName = isWindows ? 'core-parser.exe' : 'core-parser';
+  const isWindows = platform === "win32";
+  const binName = isWindows ? "core-parser.exe" : "core-parser";
   const packageKey = `@nexus-readme/cli-${platform}-${arch}`;
 
   // 1. Check scoped optional packages under node_modules
   const maxDepth = 10;
   let nodeModulesDir = currentDir;
   for (let i = 0; i < maxDepth; i++) {
-    const potentialBin = resolve(nodeModulesDir, 'node_modules', packageKey, 'bin', binName);
+    const potentialBin = resolve(
+      nodeModulesDir,
+      "node_modules",
+      packageKey,
+      "bin",
+      binName,
+    );
     if (existsSync(potentialBin)) {
       return potentialBin;
     }
@@ -66,9 +72,12 @@ export function resolveBinaryPath(
   // 2. Traverse upwards to dynamically locate the local development core-parser root folder
   let localDir = currentDir;
   for (let i = 0; i < maxDepth; i++) {
-    const potentialCoreParser = resolve(localDir, 'core-parser');
+    const potentialCoreParser = resolve(localDir, "core-parser");
     if (existsSync(potentialCoreParser)) {
-      const releaseBin = resolve(potentialCoreParser, `target/release/${binName}`);
+      const releaseBin = resolve(
+        potentialCoreParser,
+        `target/release/${binName}`,
+      );
       if (existsSync(releaseBin)) {
         return releaseBin;
       }
@@ -85,21 +94,27 @@ export function resolveBinaryPath(
   }
 
   // Absolute fallback path matching workspace structure
-  const fallbackDebug = resolve('/home/ace/nexus-readme/core-parser/target/debug/core-parser');
-  return existsSync(fallbackDebug) ? fallbackDebug : resolve('/home/ace/nexus-readme/core-parser/target/release/core-parser');
+  const fallbackDebug = resolve(
+    "/home/ace/nexus-readme/core-parser/target/debug/core-parser",
+  );
+  return existsSync(fallbackDebug)
+    ? fallbackDebug
+    : resolve("/home/ace/nexus-readme/core-parser/target/release/core-parser");
 }
 
 /**
  * Spawns the core-parser binary concurrently, collects stdout/stderr buffers safely,
  * and validates the resulting JSON topology against our Zod contract.
  */
-export function runParserBinary(options: RunnerOptions): Promise<CodebaseTopology> {
+export function runParserBinary(
+  options: RunnerOptions,
+): Promise<CodebaseTopology> {
   return new Promise((resolvePromise, reject) => {
     const binPath = resolveBinaryPath(options.binPath);
     const args: string[] = [options.workspaceDir];
 
     if (options.exclude && options.exclude.length > 0) {
-      args.push('--exclude', options.exclude.join(','));
+      args.push("--exclude", options.exclude.join(","));
     }
 
     const child = spawn(binPath, args);
@@ -107,21 +122,21 @@ export function runParserBinary(options: RunnerOptions): Promise<CodebaseTopolog
     const stdoutChunks: Buffer[] = [];
     const stderrChunks: Buffer[] = [];
 
-    child.stdout.on('data', (chunk: Buffer) => {
+    child.stdout.on("data", (chunk: Buffer) => {
       stdoutChunks.push(chunk);
     });
 
-    child.stderr.on('data', (chunk: Buffer) => {
+    child.stderr.on("data", (chunk: Buffer) => {
       stderrChunks.push(chunk);
     });
 
-    child.on('error', (err) => {
+    child.on("error", (err) => {
       reject(new Error(`Failed to start child process: ${err.message}`));
     });
 
-    child.on('close', (code) => {
-      const stdoutStr = Buffer.concat(stdoutChunks).toString('utf8');
-      const stderrStr = Buffer.concat(stderrChunks).toString('utf8');
+    child.on("close", (code) => {
+      const stdoutStr = Buffer.concat(stdoutChunks).toString("utf8");
+      const stderrStr = Buffer.concat(stderrChunks).toString("utf8");
 
       if (code !== 0) {
         reject(
@@ -129,8 +144,8 @@ export function runParserBinary(options: RunnerOptions): Promise<CodebaseTopolog
             `Parser binary exited with code ${code}. Stderr: ${stderrStr.trim()}`,
             code,
             stdoutStr,
-            stderrStr
-          )
+            stderrStr,
+          ),
         );
         return;
       }
@@ -146,8 +161,8 @@ export function runParserBinary(options: RunnerOptions): Promise<CodebaseTopolog
             `Failed to parse binary stdout as JSON: ${errorMessage}`,
             code,
             stdoutStr,
-            stderrStr
-          )
+            stderrStr,
+          ),
         );
         return;
       }
@@ -161,9 +176,9 @@ export function runParserBinary(options: RunnerOptions): Promise<CodebaseTopolog
             `CodebaseTopology validation failed: ${JSON.stringify(
               formattedErrors,
               null,
-              2
-            )}`
-          )
+              2,
+            )}`,
+          ),
         );
         return;
       }
