@@ -1,0 +1,1 @@
+/home/ace/nexus-readme/core-parser/target/release/core-parser: /home/ace/nexus-readme/core-parser/src/crawler.rs /home/ace/nexus-readme/core-parser/src/main.rs /home/ace/nexus-readme/core-parser/src/parser_engine.rs
