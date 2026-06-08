@@ -7,9 +7,9 @@
     "nexus-readme": "./dist/cli.js"
   },
   "optionalDependencies": {
-    "@nexus-readme/cli-linux-x64": "^1.0.0",
-    "@nexus-readme/cli-darwin-x64": "^1.0.0",
     "@nexus-readme/cli-darwin-arm64": "^1.0.0",
+    "@nexus-readme/cli-darwin-x64": "^1.0.0",
+    "@nexus-readme/cli-linux-x64": "^1.0.0",
     "@nexus-readme/cli-win32-x64": "^1.0.0"
   },
   "scripts": {
