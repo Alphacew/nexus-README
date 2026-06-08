@@ -95,13 +95,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     environment_variables.sort();
 
     // 5. Map ParsedModule into TopologyModule with resolved internal dependencies
+    let file_set: HashSet<PathBuf> = file_list.iter().cloned().collect();
+    let file_strs: Vec<String> = file_list
+        .iter()
+        .map(|f| f.to_string_lossy().replace('\\', "/"))
+        .collect();
+
     let modules: Vec<TopologyModule> = parsed_modules
         .iter()
         .map(|module| {
             let internal_deps = resolve_internal_dependencies(
                 &module.file_path,
                 &module.internal_dependencies,
-                &file_list,
+                &file_set,
+                &file_strs,
             );
             TopologyModule {
                 file_path: module.file_path.to_string_lossy().replace('\\', "/"),
@@ -139,7 +146,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn resolve_internal_dependencies(
     module_path: &Path,
     raw_imports: &[String],
-    file_list: &[PathBuf],
+    file_set: &HashSet<PathBuf>,
+    file_strs: &[String],
 ) -> Vec<String> {
     let mut resolved = HashSet::new();
     let module_dir = module_path.parent().unwrap_or_else(|| Path::new(""));
@@ -169,7 +177,7 @@ fn resolve_internal_dependencies(
                 };
 
                 let clean_path = clean_path_components(&check_path);
-                if file_list.iter().any(|f| f == &clean_path) {
+                if file_set.contains(&clean_path) {
                     resolved.insert(clean_path.to_string_lossy().replace('\\', "/"));
                     break;
                 }
@@ -190,13 +198,16 @@ fn resolve_internal_dependencies(
             }
             if start_idx < segments.len() {
                 let mod_name = segments[start_idx];
-                for file in file_list {
-                    let file_str = file.to_string_lossy().replace('\\', "/");
-                    if file_str.ends_with(&format!("/{}.rs", mod_name))
-                        || file_str.ends_with(&format!("/{}/mod.rs", mod_name))
-                        || file_str == format!("{}.rs", mod_name)
+                let suffix1 = format!("/{}.rs", mod_name);
+                let suffix2 = format!("/{}/mod.rs", mod_name);
+                let exact = format!("{}.rs", mod_name);
+
+                for file_str in file_strs {
+                    if file_str.ends_with(&suffix1)
+                        || file_str.ends_with(&suffix2)
+                        || file_str == &exact
                     {
-                        resolved.insert(file_str);
+                        resolved.insert(file_str.clone());
                         break;
                     }
                 }
@@ -205,21 +216,23 @@ fn resolve_internal_dependencies(
         }
 
         // Case 2: Full module paths matching workspace layout (suffix checks)
-        for file in file_list {
-            let file_str = file.to_string_lossy().replace('\\', "/");
-            let import_normalized = import_trimmed.replace('\\', "/");
+        let import_normalized = import_trimmed.replace('\\', "/");
+        let mut extensions = vec![import_normalized.clone()];
+        for ext in &[".ts", ".tsx", ".js", ".jsx", ".rs", ".py"] {
+            extensions.push(format!("{}{}", import_normalized, ext));
+        }
 
-            for ext in &["", ".ts", ".tsx", ".js", ".jsx", ".rs", ".py"] {
-                let test_import = if ext.is_empty() {
-                    import_normalized.clone()
-                } else {
-                    format!("{}{}", import_normalized, ext)
-                };
-
+        let mut found = false;
+        for file_str in file_strs {
+            for test_import in &extensions {
                 if file_str == test_import || file_str.ends_with(&format!("/{}", test_import)) {
                     resolved.insert(file_str.clone());
+                    found = true;
                     break;
                 }
+            }
+            if found {
+                break;
             }
         }
     }
