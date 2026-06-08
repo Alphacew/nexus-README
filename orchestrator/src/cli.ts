@@ -26,7 +26,12 @@ async function ensureApiKey() {
   rl.close();
   
   if (key.trim()) {
-    await fs.appendFile(envPath, `\nGEMINI_API_KEY=${key.trim()}\n`);
+    await fs.appendFile(envPath, `\nGEMINI_API_KEY=${key.trim()}\n`, { mode: 0o600 });
+    try {
+      await fs.chmod(envPath, 0o600);
+    } catch (err: any) {
+      // Ignored if unsupported or already correct
+    }
     process.env['GEMINI_API_KEY'] = key.trim();
     console.log('API key saved to .env file.');
   } else {
